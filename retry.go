@@ -62,12 +62,3 @@ func (er *exponentialRetrier) clone() *exponentialRetrier {
 	cr := *er
 	return &cr
 }
-
-func (er *exponentialRetrier) TotalTimeout() (total time.Duration) {
-	cr := er.clone()
-
-	for cr.keepTrying() {
-		total += cr.nextTimeout()
-	}
-	return total
-}
