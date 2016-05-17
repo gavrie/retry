@@ -2,16 +2,26 @@ package retry
 
 import "time"
 
+type retrier interface {
+	nextTimeout() time.Duration
+	keepTrying() bool
+}
+
+////////////////////////////////////////////////////////////
+
 type basicRetrier struct {
 	timeout time.Duration
 	retries int
+	virtual retrier
 }
 
 func NewBasic(timeout time.Duration, retries int) *basicRetrier {
-	return &basicRetrier{
+	br := &basicRetrier{
 		timeout: timeout,
 		retries: retries,
 	}
+	br.virtual = br
+	return br
 }
 
 func (br *basicRetrier) nextTimeout() time.Duration {
@@ -31,8 +41,8 @@ func (br *basicRetrier) clone() *basicRetrier {
 func (br *basicRetrier) TotalTimeout() (total time.Duration) {
 	cr := br.clone()
 
-	for cr.keepTrying() {
-		total += cr.nextTimeout()
+	for cr.virtual.keepTrying() {
+		total += cr.virtual.nextTimeout()
 	}
 	return total
 }
@@ -48,6 +58,7 @@ func NewExponential(timeout time.Duration, retries int) *exponentialRetrier {
 	// Need to use less convenient syntax here due to the way embedded fields work
 	er.timeout = timeout
 	er.retries = retries
+	er.virtual = er
 	return er
 }
 
