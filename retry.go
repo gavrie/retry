@@ -40,15 +40,15 @@ func (br *basicRetrier) TotalTimeout() (total time.Duration) {
 ////////////////////////////////////////////////////////////
 
 type exponentialRetrier struct {
-	timeout time.Duration
-	retries int
+	basicRetrier
 }
 
 func NewExponential(timeout time.Duration, retries int) *exponentialRetrier {
-	return &exponentialRetrier{
-		timeout: timeout,
-		retries: retries,
-	}
+	er := &exponentialRetrier{}
+	// Need to use less convenient syntax here due to the way embedded fields work
+	er.timeout = timeout
+	er.retries = retries
+	return er
 }
 
 func (er *exponentialRetrier) nextTimeout() time.Duration {
@@ -56,10 +56,6 @@ func (er *exponentialRetrier) nextTimeout() time.Duration {
 	t := er.timeout
 	er.timeout *= 2
 	return t
-}
-
-func (er *exponentialRetrier) keepTrying() bool {
-	return er.retries > 0
 }
 
 func (er *exponentialRetrier) clone() *exponentialRetrier {
