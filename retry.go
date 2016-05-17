@@ -2,34 +2,73 @@ package retry
 
 import "time"
 
-type retrier struct {
+type basicRetrier struct {
 	timeout time.Duration
 	retries int
 }
 
-func New(timeout time.Duration, retries int) *retrier {
-	return &retrier{
+func NewBasic(timeout time.Duration, retries int) *basicRetrier {
+	return &basicRetrier{
 		timeout: timeout,
 		retries: retries,
 	}
 }
 
-func (r *retrier) nextTimeout() time.Duration {
-	r.retries--
-	return r.timeout
+func (br *basicRetrier) nextTimeout() time.Duration {
+	br.retries--
+	return br.timeout
 }
 
-func (r *retrier) keepTrying() bool {
-	return r.retries > 0
+func (br *basicRetrier) keepTrying() bool {
+	return br.retries > 0
 }
 
-func (r *retrier) clone() *retrier {
-	cr := *r
+func (br *basicRetrier) clone() *basicRetrier {
+	cr := *br
 	return &cr
 }
 
-func (r *retrier) TotalTimeout() (total time.Duration) {
-	cr := r.clone()
+func (br *basicRetrier) TotalTimeout() (total time.Duration) {
+	cr := br.clone()
+
+	for cr.keepTrying() {
+		total += cr.nextTimeout()
+	}
+	return total
+}
+
+////////////////////////////////////////////////////////////
+
+type exponentialRetrier struct {
+	timeout time.Duration
+	retries int
+}
+
+func NewExponential(timeout time.Duration, retries int) *exponentialRetrier {
+	return &exponentialRetrier{
+		timeout: timeout,
+		retries: retries,
+	}
+}
+
+func (er *exponentialRetrier) nextTimeout() time.Duration {
+	er.retries--
+	t := er.timeout
+	er.timeout *= 2
+	return t
+}
+
+func (er *exponentialRetrier) keepTrying() bool {
+	return er.retries > 0
+}
+
+func (er *exponentialRetrier) clone() *exponentialRetrier {
+	cr := *er
+	return &cr
+}
+
+func (er *exponentialRetrier) TotalTimeout() (total time.Duration) {
+	cr := er.clone()
 
 	for cr.keepTrying() {
 		total += cr.nextTimeout()
