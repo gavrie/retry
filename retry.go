@@ -23,8 +23,13 @@ func (r *retrier) keepTrying() bool {
 	return r.retries > 0
 }
 
+func (r *retrier) clone() *retrier {
+	cr := *r
+	return &cr
+}
+
 func (r *retrier) TotalTimeout() (total time.Duration) {
-	cr := *r // Make a copy to preserve unchanged original
+	cr := r.clone()
 
 	for cr.keepTrying() {
 		total += cr.nextTimeout()
