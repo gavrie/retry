@@ -5,6 +5,15 @@ import "time"
 type retrier interface {
 	nextTimeout() time.Duration
 	keepTrying() bool
+	clone() retrier
+}
+
+func totalTimeout(r retrier) (total time.Duration) {
+	cr := r.clone()
+	for cr.keepTrying() {
+		total += cr.nextTimeout()
+	}
+	return total
 }
 
 ////////////////////////////////////////////////////////////
@@ -12,16 +21,13 @@ type retrier interface {
 type basicRetrier struct {
 	timeout time.Duration
 	retries int
-	virtual retrier
 }
 
 func NewBasic(timeout time.Duration, retries int) *basicRetrier {
-	br := &basicRetrier{
+	return &basicRetrier{
 		timeout: timeout,
 		retries: retries,
 	}
-	br.virtual = br
-	return br
 }
 
 func (br *basicRetrier) nextTimeout() time.Duration {
@@ -33,18 +39,13 @@ func (br *basicRetrier) keepTrying() bool {
 	return br.retries > 0
 }
 
-func (br *basicRetrier) clone() *basicRetrier {
+func (br *basicRetrier) clone() retrier {
 	cr := *br
 	return &cr
 }
 
 func (br *basicRetrier) TotalTimeout() (total time.Duration) {
-	cr := br.clone()
-
-	for cr.virtual.keepTrying() {
-		total += cr.virtual.nextTimeout()
-	}
-	return total
+	return totalTimeout(br)
 }
 
 ////////////////////////////////////////////////////////////
@@ -55,10 +56,9 @@ type exponentialRetrier struct {
 
 func NewExponential(timeout time.Duration, retries int) *exponentialRetrier {
 	er := &exponentialRetrier{}
-	// Need to use less convenient syntax here due to the way embedded fields work
+	// Need to change syntax here due to how embedded fields work
 	er.timeout = timeout
 	er.retries = retries
-	er.virtual = er
 	return er
 }
 
@@ -69,7 +69,11 @@ func (er *exponentialRetrier) nextTimeout() time.Duration {
 	return t
 }
 
-func (er *exponentialRetrier) clone() *exponentialRetrier {
+func (er *exponentialRetrier) clone() retrier {
 	cr := *er
 	return &cr
+}
+
+func (er *exponentialRetrier) TotalTimeout() (total time.Duration) {
+	return totalTimeout(er)
 }
