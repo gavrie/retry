@@ -14,9 +14,20 @@ func New(timeout time.Duration, retries int) *retrier {
 	}
 }
 
+func (r *retrier) nextTimeout() time.Duration {
+	r.retries--
+	return r.timeout
+}
+
+func (r *retrier) keepTrying() bool {
+	return r.retries > 0
+}
+
 func (r *retrier) TotalTimeout() (total time.Duration) {
-	for i := 0; i < r.retries; i++ {
-		total += r.timeout
+	cr := *r // Make a copy to preserve unchanged original
+
+	for cr.keepTrying() {
+		total += cr.nextTimeout()
 	}
 	return total
 }
